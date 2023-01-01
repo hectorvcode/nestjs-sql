@@ -1,14 +1,17 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CreateProfileDto } from './dto/create-profile.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Profile } from './profile.entity';
 import { User } from './users.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(Profile) private profileRepository: Repository<Profile>,
   ) {}
 
   getUsers(): Promise<User[]> {
@@ -59,5 +62,22 @@ export class UsersService {
     }
     const updatedUser = Object.assign(userFound, user);
     return this.userRepository.save(updatedUser);
+  }
+
+  async createProfile(id: number, profile: CreateProfileDto) {
+    const userFound = await this.userRepository.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!userFound) {
+      return new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const newProfile = this.profileRepository.create(profile);
+    const savedProfile = await this.profileRepository.save(newProfile);
+    userFound.profile = savedProfile;
+    return this.userRepository.save(userFound);
   }
 }
